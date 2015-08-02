@@ -14,11 +14,11 @@ import pytz
 
 app = Flask(__name__)
 
-app.secret_key = 'super secret'
+app.secret_key = 'randomstringshouldgohere'
 app.config['SERVER_NAME'] = "awaitify.com"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = \
-    "postgresql://await_user:await_password@localhost/await"
+    "postgresql://countdown_user:youcanttouchthis@localhost/countdown"
 
 cors = CORS(app)
 db.app = app
