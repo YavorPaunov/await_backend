@@ -36,60 +36,83 @@ def not_found(error=None):
         'status': 404,
         'message': 'Not found'
     }
+    return jsonify(**data), 404
 
-    return jsonify(data)
 
-@app.route('/')
+@app.route('/', subdomain="www")
+def static_root():
+    return app.send_static_file('index.html')
+
+
+@app.route('/<path:path>', subdomain="www")
+def static_path(path):
+    return app.send_static_file(path)
+
+
+@app.route('/', subdomain="api")
 def index():
     data = {
-        'message':"Welcome!"
+        'message': "Welcome!"
     }
-    return jsonify(data)
+    return jsonify(**data)
 
 
-@app.route('/counter', methods=['POST', 'GET'])
-@app.route('/counter/<int:id>', 
-    methods=['GET', 'DELETE', 'UPDATE'])
-def counter(id=None):
+@app.route('/counter', methods=['POST', 'GET'], subdomain="api")
+@app.route('/counter/<int:counter_id>', methods=['GET'], subdomain="api")
+def counter(counter_id=None):
+    response = {
+        'status': 'OK'
+    }
     if request.method == 'POST':
-        response = {
-            'status': 'OK'
-        }
-
         data = request.get_json()
-        print 'data', data
 
         text_after = data['text_after']
         text_before = data['text_before']
 
         # The time in UTC
         time = dateutil.parser.parse(data['time'])
-        print 'time', time
-        print 'now', datetime.utcnow().replace(tzinfo=pytz.utc)
 
         theme = data['theme']
         counter = None
         with db.session.no_autoflush:
-            # The unlikely event of violationg the unique constraint for url 
+            # The unlikely event of violationg the unique constraint for url
             # is not handled in any way.
             counter = Counter(url=random_str(), theme=theme, secret=random_str(),
-                text_before=text_before, text_after=text_after, time=time)
+                              text_before=text_before, text_after=text_after, time=time)
 
             if theme == 'trip':
                 origin = data['city_origin']
                 destination = data['city_destination']
                 trip_theme = TripTheme(counter=counter,
-                    origin=origin, 
-                    destination=destination)
+                                       origin=origin,
+                                       destination=destination)
                 db.session.add(trip_theme)
 
             db.session.add(counter)
 
         db.session.commit()
+    elif request.method== 'GET':
+        if counter_id is not None:
+            print 'counter_id', counter_id
+            counter = Counter.query.get_or_404(counter_id)
+            response['data'] = counter.to_dict()
+        else:            
+             # Filter out counters
+            url = request.args.get('url', None)
+            
+            if url is None:
+                abort(404)
 
-        response['data'] = counter.to_dict(True)
-        return jsonify(response)
+            counters = Counter.query.filter_by(url=url).all()
+            response['data'] = map(lambda x: x.to_dict(), counters)
 
+    return jsonify(**response)
+
+
+@app.route('/counter/<int:id>',
+           methods=['GET'], subdomain="api")
+def counterz(id=None):
+    print 'get counter'
     if request.method == 'GET':
         if id:
             # Show existing counter
@@ -98,46 +121,22 @@ def counter(id=None):
                 'status': 'OK',
                 'data': counter.to_dict()
             }
-
-            return jsonify(response)
+            return jsonify(**response)
         else:
-            # Filter out counters
+           
+  
+            counters = Counter.query.filter(url==url).all()
+  
             response = {
-                'status':"Not implemented"
+                'status': 'OK',
+                'data': counters
             }
-            return jsonify(response)
-
-    if request.method == 'UPDATE' and id is not None:
-        response = {
-            'status':"Not implemented"
-        }
-        return jsonify(response)
-
-    if request.method == 'DELETE' and id is not None:
-        response = {
-            'status':"Not implemented"
-        }
-        return jsonify(response)
-
-        # Implement some sort of simple authentication
-        counter = Counter.query.filter(Counter.url
-                ==url).first_or_404()
-
-        if counter:
-            db.session.delete(counter)
-            db.session.commit()
-        else:
-            abort(404)
-
-        response = {
-            'status': "OK"
-        }
-        return jsonify(response)
+            return jsonify(**response)
 
     return 404
 
 
-@app.route('/convert')
+@app.route('/convert', subdomain="api")
 def convert():
     millis = int(request.args.get('millis'))
     return relative_time_to_text(seconds=(millis / 1000))
