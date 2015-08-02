@@ -26,6 +26,7 @@ def debug(
     sql_config = "postgresql://{0}:{1}@{2}/{3}".format(
         user, password, host, database)
     app.config['SQLALCHEMY_DATABASE_URI'] = sql_config
+    app.config['SERVER_NAME'] = host + ':5000'
     app.debug = True
     app.run()
 
