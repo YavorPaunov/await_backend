@@ -1,16 +1,10 @@
-import os
-from flask import Flask, current_app, send_file, url_for, request, g, abort
-from flask import jsonify, json
+from flask import Flask, request, abort
+from flask import jsonify
 from flask.ext.cors import CORS
-from werkzeug.exceptions import NotFound
-from models import Counter, TripTheme, db, get_or_create
-from sqlalchemy.exc import IntegrityError
+from models import Counter, TripTheme, db
 from time2words import relative_time_to_text
-from datetime import datetime
-from util import date_format, random_str
+from util import random_str
 import dateutil.parser
-from dateutil.tz import tzutc
-import pytz
 
 app = Flask(__name__)
 
@@ -107,33 +101,6 @@ def counter(counter_id=None):
             response['data'] = map(lambda x: x.to_dict(), counters)
 
     return jsonify(**response)
-
-
-@app.route('/counter/<int:id>',
-           methods=['GET'], subdomain="api")
-def counterz(id=None):
-    print 'get counter'
-    if request.method == 'GET':
-        if id:
-            # Show existing counter
-            counter = Counter.query.get_or_404(id)
-            response = {
-                'status': 'OK',
-                'data': counter.to_dict()
-            }
-            return jsonify(**response)
-        else:
-           
-  
-            counters = Counter.query.filter(url==url).all()
-  
-            response = {
-                'status': 'OK',
-                'data': counters
-            }
-            return jsonify(**response)
-
-    return 404
 
 
 @app.route('/convert', subdomain="api")
